@@ -2,20 +2,243 @@ package luapatterns
 
 import (
 	"bytes"
-	"fmt"
+	"strings"
+	//"fmt"
 )
 
 const (
+	LUA_MAXCAPTURES = 32	// arbitrary
+
 	CAP_UNFINISHED = -1
 	CAP_POSITION = -2
-	L_ESC = "%"
+
+	L_ESC = '%'
 	SPECIALS = "^$*+?.([%-"
-	LUA_MAXCAPTURES = 32	// arbitrary
 )
+
+type capture struct {
+	init *sptr
+	len int
+}
+
+type matchState struct {
+	src_init *sptr
+	src_end *sptr
+	level int
+	capture [LUA_MAXCAPTURES]capture
+}
+
+func check_capture(ms *matchState, l int) int {
+	// TODO: Why the hell is this being done?
+	var one byte = '1'
+	l = l - int(one)
+	if l < 0 || l >= ms.level || ms.capture[l].len == CAP_UNFINISHED {
+		panic("invalid capture index")
+	}
+	return l
+}
+
+func capture_to_close(ms *matchState) int {
+	level := ms.level
+	for level--; level >=0; level-- {
+		if ms.capture[level].len == CAP_UNFINISHED {
+			return level
+		}
+	}
+	panic("invalid pattern capture")
+}
+
+func classend(ms *matchState, pp *sptr) *sptr {
+	p := pp.clone()
+	char := p.getChar()
+	p.postInc(1)
+	switch (char) {
+		case L_ESC: {
+			if p.getChar() == 0 {
+				panic("malformed pattern (ends with '%'")
+			}
+			p.preInc(1)
+			return p
+		}
+		case '[': {
+			if p.getChar() == '^' {
+				p.preInc(1)
+			}
+			for p.getChar() != ']' {		// look for an ']'
+				if p.getChar() == 0 {
+					panic("malformed pattern (missing ']')")
+				}
+				if p.postInc(1); p.getChar() == L_ESC && p.getChar() != 0 {
+					p.preInc(1)				// skip escapes (e.g. '%]')
+				}
+			}
+			p.preInc(1)
+			return p
+		}
+		default: {
+			return p
+		}
+	}
+	panic("never reached")
+}
+
+func match_class(c byte, cl byte) bool {
+	var res bool
+
+	cllower := strings.ToLower(string(cl))[0]
+	switch cllower {
+		case 'a': res = isalpha(c)
+		case 'c': res = iscntrl(c)
+		case 'd': res = isdigit(c)
+		case 'l': res = islower(c)
+		case 'p': res = ispunct(c)
+		case 's': res = isspace(c)
+		case 'u': res = isupper(c)
+		case 'w': res = isalnum(c)
+		case 'x': res = isxdigit(c)
+		case 'z': res = (c == 0)
+		default: return cl == c
+	}
+
+	if islower(cl) {
+		return res
+	}
+
+	return !res
+}
+
+func matchbracketclass(c byte, pp, ec *sptr) bool {
+	p := pp.clone()
+	var sig bool = true
+	if p.getCharAt(1) == '^' {
+		sig = false
+		p.postInc(1)		// skip the '^'
+	}
+	for {
+		p.preInc(1)
+		if p.index < ec.index {
+			p.postInc(1)
+			if match_class(c, p.getChar()) {
+				return sig
+			}
+		} else if p.getCharAt(1) == '-' && p.index + 2 < ec.index {
+			return sig
+		} else if p.getChar() == uint8(c) {
+			return sig
+		}
+	}
+	return !sig
+}
+
+func singlematch(c byte, pp, epp *sptr) bool {
+	// clone pointers that get pass outside this function
+	p, ep := pp.clone(), epp.clone()
+	switch p.getChar() {
+		case '.': return true
+		case L_ESC: return match_class(c, p.getCharAt(1))
+		case '[': {
+			ep.index = ep.index - 1
+			matchbracketclass(c, p, ep)
+		}
+		default: return p.getChar() == c
+	}
+
+	return false
+}
+
+func matchbalance(ms *matchState, sp, p *sptr) *sptr {
+	s := sp.clone()
+	if p.getChar() == 0 || p.getCharAt(1) == 0 {
+		panic("unbalanced pattern")
+	}
+	if s.getChar() != p.getChar() {
+		return nil
+	} else {
+		var b byte = p.getChar()
+		var e byte = p.getCharAt(1)
+		var cont int = 1
+		for s.preInc(1) < ms.src_end.index {
+			if s.getChar() == e {
+				cont = cont - 1
+				if cont == 0 {
+					s.preInc(1)
+					return s
+				}
+			} else if s.getChar() == b {
+				cont++
+			}
+		}
+	}
+	return nil		// string ends out of balance
+}
+
+func max_expand(ms *matchState, sp, pp, epp *sptr) *sptr {
+	// clone pointers that get pass outside this function
+	s, p, ep := sp.clone(), pp.clone(), epp.clone()
+
+	var i int = 0		// count maximum expand for item
+	for s.index + i < ms.src_end.index && singlematch(s.getCharAt(i), p, ep) {
+		i++
+	}
+	// keeps trying to match with the maximum repititions
+	for i >= 0 {
+		snext := s.clone()
+		epnext := ep.clone()
+		snext.preInc(i)
+		epnext.preInc(1)
+		var res *sptr = match(ms, s, ep)
+		if res != nil {
+			return res
+		}
+		i--				// else didn't match; reduce 1 repetition to try again
+	}
+	return nil
+}
+
+func min_expand(ms *matchState, sp, pp, epp *sptr) *sptr {
+	// clone pointers that get pass outside this function
+	s, p, ep := sp.clone(), pp.clone(), epp.clone()
+
+	for {
+		ep.preInc(1)
+		res := match(ms, s, ep)
+		if res != nil {
+			return res
+		} else if s.index < ms.src_end.index && singlematch(s.getChar(), p, ep) {
+			s.postInc(1)		// try with one more repetition
+		} else {
+			return nil
+		}
+	}
+
+	panic("never reached")
+}
+
+func start_capture(ms *matchState, sp, pp *sptr, what int) *sptr {
+	// clone pointers that get pass outside this function
+	s, p := sp.clone(), pp.clone()
+
+	var res *sptr
+	var level int = ms.level
+	if level >= LUA_MAXCAPTURES {
+		panic("too many captures")
+	}
+	ms.capture[level].init = s
+	ms.capture[level].len = what
+	ms.level = level + 1
+	if res = match(ms, s, p); res != nil {		// match failed?
+		ms.level--								// undo capture
+	}
+	return res
+}
+
+func match(ms *matchState, s, p *sptr) *sptr {
+	return nil
+}
 
 // Returns the index in 's1' where the 's2' can be found, or -1
 func lmemfind(s1 []byte, s2 []byte) int {
-	fmt.Printf("Begin lmemfind('%s', '%s')\n", s1, s2)
+	//fmt.Printf("Begin lmemfind('%s', '%s')\n", s1, s2)
 	l1, l2 := len(s1), len(s2)
 	if l2 == 0 {
 		return 0
