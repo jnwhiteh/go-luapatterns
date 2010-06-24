@@ -59,7 +59,18 @@ func str_find_aux(s, p []byte, init int, plain bool) (bool, int, int) {
 			return true, index, index + l2
 		}
 	} else {
+		//ms := new(MatchState)
 
+		// Initialize tha match state
+		// do 
+		// 		if res = match(ms, s1, p) != NULL
+		//			if find then push start, end of match, and captures
+		//			else just push captures
+		// while <condition>
+		// 		anchor is not 1
+		// 		s1++ < ms.src_end
+
+		// return nil, nothing found
 	}
 
 	return false, -1, -1
