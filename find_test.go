@@ -4,7 +4,7 @@ import (
 	"testing"
 )
 
-type Test struct {
+type PlainTest struct {
 	s1 string
 	s2 string
 	succ bool
@@ -12,18 +12,18 @@ type Test struct {
 	end int
 }
 
-var PlainTests = []Test{
-	Test{"", "", true, 0, 0},
-	Test{"a", "a", true, 0, 1},
-	Test{"a", "b", false, -1, -1},
-	Test{"ab", "b", true, 1, 2},
-	Test{"ab", "a", true, 0, 1},
-	Test{"aaa", "aaa", true, 0, 3},
-	Test{"aaabaa", "aaa", true, 0, 3},
-	Test{"aaabaa", "baa", true, 3, 6},
-	Test{"aaa", "b", false, -1, -1},
-	Test{"aaaba", "baa", false, -1, -1},
-	Test{"aaabbaba", "aba", true, 5, 8},
+var PlainTests = []PlainTest{
+	PlainTest{"", "", true, 0, 0},
+	PlainTest{"a", "a", true, 0, 1},
+	PlainTest{"a", "b", false, -1, -1},
+	PlainTest{"ab", "b", true, 1, 2},
+	PlainTest{"ab", "a", true, 0, 1},
+	PlainTest{"aaa", "aaa", true, 0, 3},
+	PlainTest{"aaabaa", "aaa", true, 0, 3},
+	PlainTest{"aaabaa", "baa", true, 3, 6},
+	PlainTest{"aaa", "b", false, -1, -1},
+	PlainTest{"aaaba", "baa", false, -1, -1},
+	PlainTest{"aaabbaba", "aba", true, 5, 8},
 }
 
 func TestPlainFind(t *testing.T) {
