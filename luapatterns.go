@@ -3,7 +3,7 @@ package luapatterns
 import (
 	"bytes"
 	"strings"
-	//"fmt"
+	"fmt"
 )
 
 const (
@@ -133,13 +133,11 @@ func matchbracketclass(c byte, pp, ec *sptr) bool {
 func singlematch(c byte, pp, epp *sptr) bool {
 	// clone pointers that get pass outside this function
 	p, ep := pp.clone(), epp.clone()
+	fmt.Printf("singlematch on '%c'\n", p.getChar())
 	switch p.getChar() {
 		case '.': return true
 		case L_ESC: return match_class(c, p.getCharAt(1))
-		case '[': {
-			ep.index = ep.index - 1
-			matchbracketclass(c, p, ep)
-		}
+		case '[': return matchbracketclass(c, p, ep.cloneAt(-1))
 		default: return p.getChar() == c
 	}
 
@@ -243,6 +241,7 @@ func end_capture(ms *matchState, sp, pp *sptr) *sptr {
 	return res
 }
 
+// TODO: Is this function correct? Had to do a bunch of translation
 func match_capture(ms *matchState, sp *sptr, l int) *sptr {
 	s := sp.clone()
 	var length int
@@ -258,8 +257,122 @@ func match_capture(ms *matchState, sp *sptr, l int) *sptr {
 	return nil
 }
 
-func match(ms *matchState, s, p *sptr) *sptr {
-	return nil
+func match(ms *matchState, sp, pp *sptr) *sptr {
+	s, p := sp.clone(), pp.clone()
+
+	init:						// use goto's to optimize tail recursion
+	switch(p.getChar()) {
+		case '(': {							// start capture
+			if p.getCharAt(1) == ')' {		// position capture
+				return start_capture(ms, s, p.cloneAt(2), CAP_POSITION)
+			} else {
+				return start_capture(ms, s, p.cloneAt(1), CAP_UNFINISHED)
+			}
+		}
+		case ')': {							// end capture
+			p.preInc(1)
+			return end_capture(ms, s, p)
+		}
+		case L_ESC: {
+			switch p.getCharAt(1) {
+				case 'b': {					// balanced string?
+					s = matchbalance(ms, s, p.cloneAt(2))
+					if s == nil {
+						return nil
+					}
+					p.preInc(4)
+					goto init				// else return match(ms, s, p+4)
+				}
+				case 'f': {					// frontier
+					var ep *sptr
+					var previous byte
+					p.preInc(2)
+					if p.getChar() != '[' {
+						panic("Missing '[' after '%f' in pattern")
+					}
+					ep = classend(ms, p)
+					if s.index == ms.src_init.index {
+						previous = 0
+					} else {
+						previous = s.getCharAt(-1)
+					}
+					if matchbracketclass(previous, p, ep.cloneAt(-1)) ||
+						!matchbracketclass(s.getChar(), p, ep.cloneAt(-1)) {
+							return nil
+					}
+					p = ep; goto init		// else return match(ms, s, ep)
+				}
+				default: {
+					if isdigit(p.getCharAt(1)) {	// capture results (%0-%9)?
+						s = match_capture(ms, s, int(p.getCharAt(1)))
+						if s == nil {
+							return nil
+						}
+						p.preInc(2); goto init		// else return match(ms, s, p+2)
+					}
+					goto dflt						// case default
+				}
+			}
+		}
+		case 0: {	// end of pattern
+			return s	// match succeeded
+		}
+		case '$': {
+			if p.getCharAt(1) == 0 {				// is the '$' the last char in pattern?
+				if s.index == ms.src_end.index {	// check end of string
+					return s
+				} else {
+					return nil
+				}
+			} else {
+				goto dflt
+			}
+		}
+		default:		// it is a pattern item
+			dflt:
+			fmt.Printf("In dflt\n")
+			var ep *sptr = classend(ms, p)		// points to what is next
+			fmt.Printf("sptr: %s\n", ep)
+			var m bool = s.index < ms.src_end.index && singlematch(s.getChar(), p, ep)
+			fmt.Printf("cond: %t\n", s.index < ms.src_end.index)
+			fmt.Printf("m: %t\n", m)
+			switch ep.getChar() {
+				case '?': {		// optional
+					var res *sptr
+					if m {
+						res = match(ms, s.cloneAt(1), ep.cloneAt(1))
+						if res != nil {
+							return res
+						}
+					}
+					p = ep.cloneAt(1)
+					goto init				// else return match(ms, s, ep+1)
+				}
+				case '*': {		// 0 or more repetitions
+					return max_expand(ms, s, p, ep)
+				}
+				case '+': {		// 1 or more repetitions
+					if m {
+						return max_expand(ms, s.cloneAt(1), p, ep)
+					} else {
+						return nil
+					}
+				}
+				case '-': {		// 0 or more repetitions (minimum)
+					return min_expand(ms, s, p, ep)
+				}
+				default: {
+					if !m {
+						return nil
+					} else {
+						s.preInc(1)
+						p = ep
+						goto init	// else return match(ms, s+1, ep)
+					}
+				}
+			}
+	}
+	panic("never reached")
 }
 
 // Returns the index in 's1' where the 's2' can be found, or -1

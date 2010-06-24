@@ -1,5 +1,7 @@
 package luapatterns
 
+import "fmt"
+
 type sptr struct {
 	str []byte
 	index int
@@ -9,13 +11,17 @@ func (s *sptr) clone() *sptr {
 	return &sptr{s.str, s.index}
 }
 
+func (s *sptr) cloneAt(index int) *sptr {
+	return &sptr{s.str, s.index + index}
+}
+
 func (s *sptr) getChar() byte {
 	return s.getCharAt(0)
 }
 
 func (s *sptr) getCharAt(index int) byte {
 	i := s.index + index
-	if i >= 0 && i <= len(s.str) {
+	if i >= 0 && i < len(s.str) {
 		return s.str[i]
 	}
 
@@ -35,4 +41,31 @@ func (s *sptr) preInc(num int) int {
 
 func (s *sptr) length() int {
 	return len(s.str) - s.index
+}
+
+func (s *sptr) getString() []byte {
+	return s.str[s.index:]
+}
+
+func (s *sptr) getStringAt(index int) []byte {
+	return s.str[s.index + index:]
+}
+
+func (s *sptr) getStringLen(length int) []byte {
+	end := s.index + length
+
+	fmt.Printf("s.str: %s\n", s.str)
+	fmt.Printf("s.index: %d\n", s.index)
+	fmt.Printf("end: %d\n", end)
+
+	if end <= 0 {
+		end = len(s.str)
+	}
+
+	if end >= len(s.str) {
+		return s.str[s.index:]
+	} else {
+		return s.str[s.index:end]
+	}
+	panic("never reached")
 }
