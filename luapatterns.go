@@ -232,6 +232,32 @@ func start_capture(ms *matchState, sp, pp *sptr, what int) *sptr {
 	return res
 }
 
+func end_capture(ms *matchState, sp, pp *sptr) *sptr {
+	s, p := sp.clone(), pp.clone()
+	var l int = capture_to_close(ms)
+	var res *sptr
+	ms.capture[l].len = s.index - ms.capture[l].init.index		// close capture
+	if res = match(ms, s, p); res == nil {						// match failed?
+		ms.capture[l].len = CAP_UNFINISHED						// undo capture
+	}
+	return res
+}
+
+func match_capture(ms *matchState, sp *sptr, l int) *sptr {
+	s := sp.clone()
+	var length int
+	l = check_capture(ms, l)
+	length = ms.capture[l].len
+	capstr := ms.capture[l].init.str[ms.capture[l].init.index:][1:length]
+	sstr := s.str[1:length]
+
+	if ms.src_end.index - s.index >= length && bytes.Compare(capstr, sstr) == 0 {
+		s.preInc(length)
+		return s
+	}
+	return nil
+}
+
 func match(ms *matchState, s, p *sptr) *sptr {
 	return nil
 }
