@@ -1,14 +1,18 @@
 package luapatterns
 
 import (
-	"testing"
 	"fmt"
+	"reflect"
+	"testing"
 )
+
+// stopping errors
+var foo = fmt.Sprintf("blah")
 
 func get_onecapture(ms *matchState, i int, s, e *sptr) []byte {
 	if i >= ms.level {
 		if i == 0 {		// ms->level == 0 too
-			fmt.Printf("Returning whole string\n")
+			//fmt.Printf("Returning whole string\n")
 
 			return s.getStringLen(e.length() - s.length())
 		} else {
@@ -44,15 +48,15 @@ func matchWrapper(s, p string) (bool, []string) {
 	for {
 		var res *sptr = match(ms, s1, pp)
 		if res != nil {
-			fmt.Printf("===== GOT MATCH =====\n")
-			fmt.Printf("ms.level: %d\n", ms.level)
-			fmt.Printf("Res: %s\n", res)
-			fmt.Printf("s1: %s\n", s1)
-			fmt.Printf("Captures: \n")
+			// fmt.Printf("===== GOT MATCH =====\n")
+			// fmt.Printf("ms.level: %d\n", ms.level)
+			// fmt.Printf("Res: %s\n", res)
+			// fmt.Printf("s1: %s\n", s1)
+			// fmt.Printf("Captures: \n")
 			for i := 0; i < LUA_MAXCAPTURES; i++ {
 				capt := ms.capture[i]
 				if capt.init != nil {
-					fmt.Printf("Index %d: str: %s, index: %d, len: %d\n", i, capt.init.str, capt.init.index, capt.len)
+					//fmt.Printf("Index %d: str: %s, index: %d, len: %d\n", i, capt.init.str, capt.init.index, capt.len)
 				}
 			}
 
@@ -69,6 +73,7 @@ func matchWrapper(s, p string) (bool, []string) {
 
 			for i = 0; i < nlevels; i++ {
 				captures[i] = string(get_onecapture(ms, i, s1, res))
+				//fmt.Printf("CAP[%d] = %s\n", i, captures[i])
 			}
 
 			return true, captures[0:nlevels]
@@ -80,40 +85,29 @@ func matchWrapper(s, p string) (bool, []string) {
 	panic("never reached")
 }
 
-func TestMatch(t *testing.T) {
-	succ, caps := matchWrapper("Apple", "[Aa]p(p)le")
-	t.Errorf("succ: %t", succ)
-	t.Errorf("caps: %s", caps)
+type MatchTest struct {
+	str string
+	pat string
+	succ bool
+	caps []string
 }
 
-func _TestMatch(t *testing.T) {
-	ms := new(matchState)
-	str := []byte("Apple")
+var MatchTests = []MatchTest{
+	MatchTest{"Apple", "[Aa]pple", true, []string{"Apple"}},
+	MatchTest{"Apple", "apple", false, []string{}},
+	MatchTest{"Apple", "(Ap)ple", true, []string{"Ap"}},
+	MatchTest{"Apple", "(Ap)p(le)", true, []string{"Ap", "le"}},
+	MatchTest{"Apple", "A(pp)(le)", true, []string{"pp", "le"}},
+}
 
-	ms.src_init = &sptr{str, 0}
-	ms.src_end = &sptr{str, 5}
-
-	s1 := ms.src_init.clone()
-
-	p := &sptr{[]byte("([Aa])pple"), 0}
-
-	for {
-		var res *sptr = match(ms, s1, p)
-		if res != nil {
-			t.Errorf("MATCH FOUND: %s", ms)
+func TestMatch(t *testing.T) {
+	for _, test := range MatchTests {
+		succ, caps := matchWrapper(test.str, test.pat)
+		if succ != test.succ {
+			t.Errorf("match('%s', '%s') returned %t instead of expected %t", test.str, test.pat, succ, test.succ)
 		}
-		if s1.postInc(1) >= ms.src_end.index {
-			t.Errorf("Breaking out:")
-			t.Errorf("res: %s", res)
-			t.Errorf("s1: %s", s1)
-			t.Errorf("p: %s", p)
-			t.Errorf("ms.src_end: %s", ms.src_end)
-			t.Errorf("ms.src_init: %s", ms.src_init)
-			t.Errorf("ms.level: %d", ms.level)
-			t.Errorf("len(ms.capture): %d cap, %d", len(ms.capture), cap(ms.capture))
-			break
+		if !reflect.DeepEqual(caps, test.caps) {
+			t.Errorf("Captures do not match: got %s expected %s", caps, test.caps)
 		}
 	}
-
-	t.Errorf("Failed to find a match")
 }

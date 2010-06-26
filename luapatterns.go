@@ -3,7 +3,6 @@ package luapatterns
 import (
 	"bytes"
 	"strings"
-	"fmt"
 )
 
 const (
@@ -133,7 +132,6 @@ func matchbracketclass(c byte, pp, ec *sptr) bool {
 func singlematch(c byte, pp, epp *sptr) bool {
 	// clone pointers that get pass outside this function
 	p, ep := pp.clone(), epp.clone()
-	fmt.Printf("singlematch on '%c'\n", p.getChar())
 	switch p.getChar() {
 		case '.': return true
 		case L_ESC: return match_class(c, p.getCharAt(1))
@@ -224,7 +222,7 @@ func start_capture(ms *matchState, sp, pp *sptr, what int) *sptr {
 	ms.capture[level].init = s
 	ms.capture[level].len = what
 	ms.level = level + 1
-	if res = match(ms, s, p); res != nil {		// match failed?
+	if res = match(ms, s, p); res == nil {		// match failed?
 		ms.level--								// undo capture
 	}
 	return res
@@ -272,7 +270,7 @@ func match(ms *matchState, sp, pp *sptr) *sptr {
 		case ')': {							// end capture
 			p.preInc(1)
 			return end_capture(ms, s, p)
-		}
+	}
 		case L_ESC: {
 			switch p.getCharAt(1) {
 				case 'b': {					// balanced string?
@@ -330,12 +328,8 @@ func match(ms *matchState, sp, pp *sptr) *sptr {
 		}
 		default:		// it is a pattern item
 			dflt:
-			fmt.Printf("In dflt\n")
 			var ep *sptr = classend(ms, p)		// points to what is next
-			fmt.Printf("sptr: %s\n", ep)
 			var m bool = s.index < ms.src_end.index && singlematch(s.getChar(), p, ep)
-			fmt.Printf("cond: %t\n", s.index < ms.src_end.index)
-			fmt.Printf("m: %t\n", m)
 			switch ep.getChar() {
 				case '?': {		// optional
 					var res *sptr
