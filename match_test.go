@@ -10,6 +10,7 @@ import (
 var foo = fmt.Sprintf("blah")
 
 func get_onecapture(ms *matchState, i int, s, e *sptr) []byte {
+	debug("get_onecapture")
 	if i >= ms.level {
 		if i == 0 {		// ms->level == 0 too
 			//fmt.Printf("Returning whole string\n")
@@ -34,6 +35,7 @@ func get_onecapture(ms *matchState, i int, s, e *sptr) []byte {
 }
 
 func matchWrapper(s, p string) (bool, []string) {
+	debug("matchwrapper")
 	// Create string pointers
 	sp := &sptr{[]byte(s), 0}
 	pp := &sptr{[]byte(p), 0}
@@ -98,6 +100,14 @@ var MatchTests = []MatchTest{
 	MatchTest{"Apple", "(Ap)ple", true, []string{"Ap"}},
 	MatchTest{"Apple", "(Ap)p(le)", true, []string{"Ap", "le"}},
 	MatchTest{"Apple", "A(pp)(le)", true, []string{"pp", "le"}},
+	MatchTest{"apple", "a[Pp][Pp]le", true, []string{"apple"}},
+	MatchTest{"a", "%a", true, []string{"a"}},
+	MatchTest{"1", "%a", false, []string{}},
+	MatchTest{"\x00", "%c", true, []string{"\x00"}},
+	MatchTest{"a", "%c", false, []string{}},
+	//MatchTest{"1", "%d", true, []string{"1"}},
+	//MatchTest{"a", "%d", false, []string{}},
+	//MatchTest{"a", "%l", true, []string{"a"}},
 }
 
 func TestMatch(t *testing.T) {

@@ -13,7 +13,7 @@ func isalpha(b byte) bool {
 }
 
 func iscntrl(b byte) bool {
-	return b < ' ' || (b >= '\x7F' && b <= '\x9f')
+	return b <= '\007' || (b >= '\010' && b <= '\017') || (b >= '\020' && b <= '\027') || (b >= '\030' && b <= '\037') || b == '\177'
 }
 
 func isdigit(b byte) bool {

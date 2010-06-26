@@ -2,8 +2,17 @@ package luapatterns
 
 import (
 	"bytes"
+	"io"
 	"strings"
+	"os"
 )
+
+var enableDebug bool = false
+func debug(s string) {
+	if enableDebug {
+		io.WriteString(os.Stderr, s + "|")
+	}
+}
 
 const (
 	LUA_MAXCAPTURES = 32	// arbitrary
@@ -28,6 +37,7 @@ type matchState struct {
 }
 
 func check_capture(ms *matchState, l int) int {
+	debug("check_capture")
 	// TODO: Why the hell is this being done?
 	var one byte = '1'
 	l = l - int(one)
@@ -38,6 +48,7 @@ func check_capture(ms *matchState, l int) int {
 }
 
 func capture_to_close(ms *matchState) int {
+	debug("capture_to_close")
 	level := ms.level
 	for level--; level >=0; level-- {
 		if ms.capture[level].len == CAP_UNFINISHED {
@@ -48,6 +59,7 @@ func capture_to_close(ms *matchState) int {
 }
 
 func classend(ms *matchState, pp *sptr) *sptr {
+	debug("classend")
 	p := pp.clone()
 	char := p.getChar()
 	p.postInc(1)
@@ -63,14 +75,21 @@ func classend(ms *matchState, pp *sptr) *sptr {
 			if p.getChar() == '^' {
 				p.preInc(1)
 			}
-			for p.getChar() != ']' {		// look for an ']'
+			for {							// look for an ']'
 				if p.getChar() == 0 {
 					panic("malformed pattern (missing ']')")
 				}
-				if p.postInc(1); p.getChar() == L_ESC && p.getChar() != 0 {
-					p.preInc(1)				// skip escapes (e.g. '%]')
+				pch := p.getChar()
+				p.postInc(1)
+				if pch == L_ESC && p.getChar() != 0 {
+					p.postInc(1)
+				}
+				// while condition at the end
+				if p.getChar() == ']' {
+					break
 				}
 			}
+
 			p.preInc(1)
 			return p
 		}
@@ -82,6 +101,7 @@ func classend(ms *matchState, pp *sptr) *sptr {
 }
 
 func match_class(c byte, cl byte) bool {
+	debug("match_class")
 	var res bool
 
 	cllower := strings.ToLower(string(cl))[0]
@@ -107,22 +127,25 @@ func match_class(c byte, cl byte) bool {
 }
 
 func matchbracketclass(c byte, pp, ec *sptr) bool {
+	debug("matchbracketclass")
 	p := pp.clone()
 	var sig bool = true
 	if p.getCharAt(1) == '^' {
 		sig = false
 		p.postInc(1)		// skip the '^'
 	}
-	for {
-		p.preInc(1)
-		if p.index < ec.index {
+	for p.preInc(1) < ec.index {
+		if p.getChar() == L_ESC {
 			p.postInc(1)
 			if match_class(c, p.getChar()) {
 				return sig
 			}
-		} else if p.getCharAt(1) == '-' && p.index + 2 < ec.index {
-			return sig
-		} else if p.getChar() == uint8(c) {
+		} else if (p.getCharAt(1) == '-') && p.index + 2 < ec.index {
+			p.postInc(2)
+			if p.getCharAt(-2) <= c && c <= p.getChar() {
+				return sig
+			}
+		} else if p.getChar() == c {
 			return sig
 		}
 	}
@@ -130,6 +153,7 @@ func matchbracketclass(c byte, pp, ec *sptr) bool {
 }
 
 func singlematch(c byte, pp, epp *sptr) bool {
+	debug("singlematch")
 	// clone pointers that get pass outside this function
 	p, ep := pp.clone(), epp.clone()
 	switch p.getChar() {
@@ -143,6 +167,7 @@ func singlematch(c byte, pp, epp *sptr) bool {
 }
 
 func matchbalance(ms *matchState, sp, p *sptr) *sptr {
+	debug("matchbalance")
 	s := sp.clone()
 	if p.getChar() == 0 || p.getCharAt(1) == 0 {
 		panic("unbalanced pattern")
@@ -169,6 +194,7 @@ func matchbalance(ms *matchState, sp, p *sptr) *sptr {
 }
 
 func max_expand(ms *matchState, sp, pp, epp *sptr) *sptr {
+	debug("max_expand")
 	// clone pointers that get pass outside this function
 	s, p, ep := sp.clone(), pp.clone(), epp.clone()
 
@@ -192,6 +218,7 @@ func max_expand(ms *matchState, sp, pp, epp *sptr) *sptr {
 }
 
 func min_expand(ms *matchState, sp, pp, epp *sptr) *sptr {
+	debug("min_expand")
 	// clone pointers that get pass outside this function
 	s, p, ep := sp.clone(), pp.clone(), epp.clone()
 
@@ -211,6 +238,7 @@ func min_expand(ms *matchState, sp, pp, epp *sptr) *sptr {
 }
 
 func start_capture(ms *matchState, sp, pp *sptr, what int) *sptr {
+	debug("start_capture")
 	// clone pointers that get pass outside this function
 	s, p := sp.clone(), pp.clone()
 
@@ -229,6 +257,7 @@ func start_capture(ms *matchState, sp, pp *sptr, what int) *sptr {
 }
 
 func end_capture(ms *matchState, sp, pp *sptr) *sptr {
+	debug("end_capture")
 	s, p := sp.clone(), pp.clone()
 	var l int = capture_to_close(ms)
 	var res *sptr
@@ -241,6 +270,7 @@ func end_capture(ms *matchState, sp, pp *sptr) *sptr {
 
 // TODO: Is this function correct? Had to do a bunch of translation
 func match_capture(ms *matchState, sp *sptr, l int) *sptr {
+	debug("match_capture")
 	s := sp.clone()
 	var length int
 	l = check_capture(ms, l)
@@ -256,6 +286,7 @@ func match_capture(ms *matchState, sp *sptr, l int) *sptr {
 }
 
 func match(ms *matchState, sp, pp *sptr) *sptr {
+	debug("match")
 	s, p := sp.clone(), pp.clone()
 
 	init:						// use goto's to optimize tail recursion

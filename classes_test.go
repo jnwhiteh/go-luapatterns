@@ -25,6 +25,8 @@ func invert(s string) string {
 	return res
 }
 
+var cntrl = ascii[0:32] + string(ascii[127])
+
 var ClassTests = []ClassTest {
 	ClassTest{"isalpha", isalpha, ascii[65:91], true},
 	ClassTest{"isalpha", isalpha, ascii[97:123], true},
@@ -35,9 +37,8 @@ var ClassTests = []ClassTest {
 	ClassTest{"islower", islower, invert(ascii[97:123]), false},
 	ClassTest{"isupper", isupper, ascii[65:91], true},
 	ClassTest{"isupper", isupper, invert(ascii[65:91]), false},
-	ClassTest{"iscntrl", iscntrl, ascii[0:32], true},
-	ClassTest{"iscntrl", iscntrl, ascii[127:160], true},
-	ClassTest{"iscntrl", iscntrl, invert(ascii[0:32] + ascii[127:160]), false},
+	ClassTest{"iscntrl", iscntrl, cntrl, true},
+	ClassTest{"iscntrl", iscntrl, invert(cntrl), false},
 	ClassTest{"ispunct", ispunct, "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|", true},
 	ClassTest{"ispunct", ispunct, invert("!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|~}"), false},
 	ClassTest{"isspace", isspace, "\t\n\v\f\r ", true},
