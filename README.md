@@ -8,6 +8,10 @@ source. This means this package incurs quite a bit of overhead by implementing
 a string pointer type. I have still found the speed to be rather acceptable for
 most pattern matching needs.
 
+Currently the following function equivalents are implemented:
+  * string.match
+  * string.find
+
 ## Installing
 
 You can install the package using [goinstall][4]
