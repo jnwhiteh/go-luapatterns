@@ -37,7 +37,7 @@ var MatchTests = []MatchTest{
 func TestMatch(t *testing.T) {
 	for _, test := range MatchTests {
 		debug(fmt.Sprintf("==== %s ====", test))
-		succ, caps := MatchString(test.str, test.pat, 0)
+		succ, caps := Match(test.str, test.pat)
 		if succ != test.succ {
 			t.Errorf("match('%s', '%s') returned %t instead of expected %t", test.str, test.pat, succ, test.succ)
 		} else if !reflect.DeepEqual(caps, test.caps) {

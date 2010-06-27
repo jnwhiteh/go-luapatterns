@@ -2,7 +2,6 @@ package luapatterns
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"strings"
 	"os"
@@ -206,7 +205,6 @@ func max_expand(ms *matchState, sp, pp, epp *sptr) *sptr {
 	// keeps trying to match with the maximum repititions
 	for i >= 0 {
 
-		debug(fmt.Sprintf("Trying to match %d repetitions", i))
 		res := match(ms, s.cloneAt(i), ep.cloneAt(1))
 		if res != nil {
 			return res
@@ -403,12 +401,9 @@ func match(ms *matchState, sp, pp *sptr) *sptr {
 
 func get_onecapture(ms *matchState, i int, s, e *sptr) []byte {
 	debug("get_onecapture")
-	debug(fmt.Sprintf("i: %d, ms.level: %d", i, ms.level))
 	if i >= ms.level {
 		if i == 0 {		// ms->level == 0 too
 			// return whole match
-			debug(fmt.Sprintf("e: %s", e))
-			debug(fmt.Sprintf("s: %s", s))
 			return s.getStringLen(e.index - s.index)
 		} else {
 			panic("invalid capture index")
@@ -428,16 +423,11 @@ func get_onecapture(ms *matchState, i int, s, e *sptr) []byte {
 	panic("never reached")
 }
 
-func find_and_capture(s, p []byte, init int) (bool, int, int, [][]byte) {
+func find_and_capture(s, p []byte) (bool, int, int, [][]byte) {
 	slen := len(s)
-	if init < 0 {
-		init = 0
-	} else if init > slen {
-		init = slen
-	}
 
 	// Turn s and p into string pointers
-	sp := &sptr{s, init}
+	sp := &sptr{s, 0}
 	pp := &sptr{p, 0}
 
 	ms := new(matchState)
@@ -456,10 +446,6 @@ func find_and_capture(s, p []byte, init int) (bool, int, int, [][]byte) {
 	for {
 		var res *sptr = match(ms, s1, pp)
 		if res != nil {
-			debug(fmt.Sprintf("res: %s", res))
-			debug(fmt.Sprintf("s1: %s", s1))
-			debug(fmt.Sprintf("sp: %s", sp))
-
 			start := s1.index - sp.index
 			end := res.index - sp.index
 
@@ -478,7 +464,7 @@ func find_and_capture(s, p []byte, init int) (bool, int, int, [][]byte) {
 				captures[i] = get_onecapture(ms, i, s1, res)
 			}
 
-			return true, init + start, init + end, captures[0:nlevels]
+			return true, start, end, captures[0:nlevels]
 		}
 		if s1.postInc(1) >= ms.src_end.index || anchor {
 			return false, -1, -1, nil
@@ -486,45 +472,6 @@ func find_and_capture(s, p []byte, init int) (bool, int, int, [][]byte) {
 	}
 
 	panic("never reached")
-}
-
-func MatchString(s, p  string, init int) (bool, []string) {
-	succ, _, _, caps := find_and_capture([]byte(s), []byte(p), init)
-	scaps := make([]string, LUA_MAXCAPTURES)
-	for idx, str := range caps {
-		scaps[idx] = string(str)
-	}
-	return succ, scaps[0:len(caps)]
-}
-
-func MatchBytes(s, p []byte, init int) (bool, [][]byte) {
-	succ, _, _, caps := find_and_capture(s, p, init)
-	return succ, caps
-}
-
-func FindString(s, p string, init int, plain bool) (bool, int, int, []string) {
-	sb, pb := []byte(s), []byte(p)
-	succ, start, end, caps := FindBytes(sb, pb, init, plain)
-
-	scaps := make([]string, LUA_MAXCAPTURES)
-	for idx, str := range caps {
-		scaps[idx] = string(str)
-	}
-
-	return succ, start, end, scaps[0:len(caps)]
-}
-
-func FindBytes(s, p []byte, init int, plain bool) (bool, int, int, [][]byte) {
-	if plain || bytes.IndexAny(p, SPECIALS) == -1 {
-		if index := lmemfind(s[init:], p); index != -1 {
-			return true, init + index, init + index + len(p), nil
-		} else {
-			return false, -1, -1, nil
-		}
-	}
-
-	// Do a normal match with captures
-	return find_and_capture(s, p, init)
 }
 
 // Returns the index in 's1' where the 's2' can be found, or -1
@@ -556,4 +503,66 @@ func lmemfind(s1 []byte, s2 []byte) int {
 	}
 
 	return -1
+}
+
+// Looks for the first match of pattern p in the string s. If it finds one,
+// then match returns true and the captures from the pattern; otherwise it
+// returns false, nil.  If pattern specifies no captures, then the whole match
+// is returned.
+func Match(s, p  string) (bool, []string) {
+	succ, _, _, caps := find_and_capture([]byte(s), []byte(p))
+	scaps := make([]string, LUA_MAXCAPTURES)
+	for idx, str := range caps {
+		scaps[idx] = string(str)
+	}
+	return succ, scaps[0:len(caps)]
+}
+
+// Same as the Match function, however operates directly on byte arrays rather
+// than strings. This package operates natively in bytes, so this function is
+// called by Match to perform it's work. 
+func MatchBytes(s, p []byte) (bool, [][]byte) {
+	succ, _, _, caps := find_and_capture(s, p)
+	return succ, caps
+}
+
+// Looks for the first match of pattern p in the string s. If it finds a match,
+// then find returns the indices of s where this occurrence starts and ends;
+// otherwise, it returns nil. If the pattern has captures, they are returned in
+// an array. If the argument 'plain' is set to 'true', then this function
+// performs a plain 'find substring' operation with no characters in the
+// pattern being considered magic.
+//
+// Note that the indices returned from this function will NOT match the
+// versions returned by the equivalent Lua string and pattern due to the
+// differences in slice semantics and array indexing. 
+//
+// You can rely on the fact that s[startIdx:endIdx] will be the entire portion
+// of the string that matched the pattern.
+func Find(s, p string, plain bool) (bool, int, int, []string) {
+	sb, pb := []byte(s), []byte(p)
+	succ, start, end, caps := FindBytes(sb, pb, plain)
+
+	scaps := make([]string, LUA_MAXCAPTURES)
+	for idx, str := range caps {
+		scaps[idx] = string(str)
+	}
+
+	return succ, start, end, scaps[0:len(caps)]
+}
+
+// Same as the Find function, however operates directly on byte arrays rather
+// than strings. This package operates natively in bytes, so this function is
+// called by Find to perform it's work. 
+func FindBytes(s, p []byte, plain bool) (bool, int, int, [][]byte) {
+	if plain || bytes.IndexAny(p, SPECIALS) == -1 {
+		if index := lmemfind(s, p); index != -1 {
+			return true, index, index + len(p), nil
+		} else {
+			return false, -1, -1, nil
+		}
+	}
+
+	// Do a normal match with captures
+	return find_and_capture(s, p)
 }

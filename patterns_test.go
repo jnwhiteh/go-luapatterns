@@ -1,7 +1,6 @@
 package luapatterns
 
 import (
-	"fmt"
 	"testing"
 )
 
@@ -34,7 +33,7 @@ var posTests = []posTest{
 
 func _TestPatternPos(t *testing.T) {
 	for _, test := range posTests {
-		succ, start, end, _ := FindString(test.str, test.pat, test.init, false)
+		succ, start, end, _ := Find(test.str, test.pat, false)
 		if succ != test.succ {
 			t.Errorf("find('%s', '%s', %d) returned %t, expected %t", test.str, test.pat, test.init, succ, test.succ)
 		}
@@ -102,8 +101,7 @@ func TestSubtring(t *testing.T) {
 
 	for _, test := range subTests {
 
-		debug(fmt.Sprintf("=== %s ===", test))
-		succ, start, end, _ := FindString(test.str, test.pat, 0, false)
+		succ, start, end, _ := Find(test.str, test.pat, false)
 		if succ != test.succ {
 			t.Errorf("find('%s', '%s') returned %t, expected %t", test.str, test.pat, succ, test.succ)
 		}
