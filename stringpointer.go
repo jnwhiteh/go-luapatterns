@@ -52,7 +52,7 @@ func (s *sptr) getStringAt(index int) []byte {
 func (s *sptr) getStringLen(length int) []byte {
 	end := s.index + length
 
-	if end <= 0 {
+	if end < 0 {
 		end = len(s.str)
 	}
 

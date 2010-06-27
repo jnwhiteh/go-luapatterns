@@ -2,6 +2,7 @@ package luapatterns
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"strings"
 	"os"
@@ -10,7 +11,7 @@ import (
 var enableDebug bool = false
 func debug(s string) {
 	if enableDebug {
-		io.WriteString(os.Stderr, s + "|")
+		io.WriteString(os.Stderr, s + "\n")
 	}
 }
 
@@ -149,6 +150,7 @@ func matchbracketclass(c byte, pp, ec *sptr) bool {
 			return sig
 		}
 	}
+
 	return !sig
 }
 
@@ -202,18 +204,18 @@ func max_expand(ms *matchState, sp, pp, epp *sptr) *sptr {
 	for s.index + i < ms.src_end.index && singlematch(s.getCharAt(i), p, ep) {
 		i++
 	}
+
+	debug(fmt.Sprintf("i: %d\n", i))
+
 	// keeps trying to match with the maximum repititions
 	for i >= 0 {
-		snext := s.clone()
-		epnext := ep.clone()
-		snext.preInc(i)
-		epnext.preInc(1)
-		var res *sptr = match(ms, s, ep)
+		res := match(ms, s.cloneAt(i), ep.cloneAt(1))
 		if res != nil {
 			return res
 		}
-		i--				// else didn't match; reduce 1 repetition to try again
+		i--				// else didn't match; reduce 1 repetition to try again 
 	}
+
 	return nil
 }
 
@@ -301,7 +303,7 @@ func match(ms *matchState, sp, pp *sptr) *sptr {
 		case ')': {							// end capture
 			p.preInc(1)
 			return end_capture(ms, s, p)
-	}
+		}
 		case L_ESC: {
 			switch p.getCharAt(1) {
 				case 'b': {					// balanced string?
@@ -359,6 +361,7 @@ func match(ms *matchState, sp, pp *sptr) *sptr {
 		}
 		default:		// it is a pattern item
 			dflt:
+			debug("dflt label")
 			var ep *sptr = classend(ms, p)		// points to what is next
 			var m bool = s.index < ms.src_end.index && singlematch(s.getChar(), p, ep)
 			switch ep.getChar() {
@@ -400,6 +403,132 @@ func match(ms *matchState, sp, pp *sptr) *sptr {
 	panic("never reached")
 }
 
+func get_onecapture(ms *matchState, i int, s, e *sptr) []byte {
+	debug("get_onecapture")
+	debug(fmt.Sprintf("i: %d, ms.level: %d", i, ms.level))
+	if i >= ms.level {
+		if i == 0 {		// ms->level == 0 too
+			// return whole match
+			debug(fmt.Sprintf("e: %s", e))
+			debug(fmt.Sprintf("s: %s", s))
+			return s.getStringLen(e.index - s.index)
+		} else {
+			panic("invalid capture index")
+		}
+	} else {
+		var l int = ms.capture[i].len
+		if l == CAP_UNFINISHED {
+			panic("unfinished capture")
+		}
+		if l == CAP_POSITION {
+			// TODO: Find a way to fix this
+			panic("position captures not supported")
+		} else {
+			return ms.capture[i].init.getStringLen(l)
+		}
+	}
+	panic("never reached")
+}
+
+func find_and_capture(s, p []byte, init int) (bool, int, int, [][]byte) {
+	slen := len(s)
+	if init < 0 {
+		init = 0
+	} else if init > slen {
+		init = slen
+	}
+
+	// Turn s and p into string pointers
+	sp := &sptr{s, init}
+	pp := &sptr{p, 0}
+
+	ms := new(matchState)
+	ms.src_init = sp
+	ms.src_end = sp.cloneAt(slen)
+	s1 := ms.src_init.clone()
+
+	var anchor bool
+	if pp.getChar() == '^' {
+		pp.postInc(1)
+		anchor = true
+	} else {
+		anchor = false
+	}
+
+	for {
+		var res *sptr = match(ms, s1, pp)
+		if res != nil {
+			debug(fmt.Sprintf("res: %s", res))
+			debug(fmt.Sprintf("s1: %s", s1))
+			debug(fmt.Sprintf("sp: %s", sp))
+
+			start := s1.index - sp.index
+			end := res.index - sp.index
+
+			// Fetch the captures
+			captures := new([LUA_MAXCAPTURES][]byte)
+
+			var i int
+			var nlevels int
+			if ms.level == 0 && s1 != nil {
+				nlevels = 1
+			} else {
+				nlevels = ms.level
+			}
+
+			for i = 0; i < nlevels; i++ {
+				captures[i] = get_onecapture(ms, i, s1, res)
+			}
+
+			return true, init + start, init + end, captures[0:nlevels]
+		}
+		if s1.postInc(1) >= ms.src_end.index || anchor {
+			return false, -1, -1, nil
+		}
+	}
+
+	panic("never reached")
+}
+
+func MatchString(s, p  string, init int) (bool, []string) {
+	succ, _, _, caps := find_and_capture([]byte(s), []byte(p), init)
+	scaps := make([]string, LUA_MAXCAPTURES)
+	for idx, str := range caps {
+		scaps[idx] = string(str)
+	}
+	return succ, scaps[0:len(caps)]
+}
+
+func MatchBytes(s, p []byte, init int) (bool, [][]byte) {
+	succ, _, _, caps := find_and_capture(s, p, init)
+	return succ, caps
+}
+
+func FindString(s, p string, init int, plain bool) (bool, int, int, []string) {
+	sb, pb := []byte(s), []byte(p)
+	succ, start, end, caps := FindBytes(sb, pb, init, plain)
+
+	scaps := make([]string, LUA_MAXCAPTURES)
+	for idx, str := range caps {
+		scaps[idx] = string(str)
+	}
+
+	return succ, start, end, scaps[0:len(caps)]
+}
+
+func FindBytes(s, p []byte, init int, plain bool) (bool, int, int, [][]byte) {
+	if plain || bytes.IndexAny(p, SPECIALS) == -1 {
+		if index := lmemfind(s[init:], p); index != -1 {
+			return true, init + index, init + index + len(p), nil
+		} else {
+			return false, -1, -1, nil
+		}
+	}
+
+	// Do a normal match with captures
+	return find_and_capture(s, p, init)
+}
+
 // Returns the index in 's1' where the 's2' can be found, or -1
 func lmemfind(s1 []byte, s2 []byte) int {
 	//fmt.Printf("Begin lmemfind('%s', '%s')\n", s1, s2)
@@ -429,36 +558,4 @@ func lmemfind(s1 []byte, s2 []byte) int {
 	}
 
 	return -1
-}
-
-func str_find_aux(s, p []byte, init int, plain bool) (bool, int, int) {
-	l1, l2 := len(s), len(p)
-
-	if init < 0 {
-		init = 0
-	} else if init > l1 {
-		init = l1
-	}
-
-	// check if we can do a plain search
-	if plain || bytes.IndexAny(p, SPECIALS) == -1 {
-		if index := lmemfind(s[init:], p); index != -1 {
-			return true, index, index + l2
-		}
-	} else {
-		//ms := new(MatchState)
-
-		// Initialize tha match state
-		// do 
-		// 		if res = match(ms, s1, p) != NULL
-		//			if find then push start, end of match, and captures
-		//			else just push captures
-		// while <condition>
-		// 		anchor is not 1
-		// 		s1++ < ms.src_end
-
-		// return nil, nothing found
-	}
-
-	return false, -1, -1
 }
