@@ -48,7 +48,7 @@ Section 5.4.1][3].
   * The indices returns from Find will not match the returns from the
     equivalent Lua program due to differences in array indexing (start will be
     -1) and slices. In order to get the substring of a pattern match, you can
-    take str[startIndex:endIndex].
+    take `str[startIndex:endIndex]`.
 
 ## Known Issues
 
