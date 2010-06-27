@@ -225,8 +225,7 @@ func min_expand(ms *matchState, sp, pp, epp *sptr) *sptr {
 	s, p, ep := sp.clone(), pp.clone(), epp.clone()
 
 	for {
-		ep.preInc(1)
-		res := match(ms, s, ep)
+		res := match(ms, s, ep.cloneAt(1))
 		if res != nil {
 			return res
 		} else if s.index < ms.src_end.index && singlematch(s.getChar(), p, ep) {

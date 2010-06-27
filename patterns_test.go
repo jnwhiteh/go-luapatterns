@@ -71,13 +71,31 @@ var subTests = []subTest{
 	subTest{"", "b*", true, ""},
 	subTest{"aaa", "bb*", false, ""},
 	subTest{"aaab", "a-", true, ""},
-//	subTest{"aaa", "^.-$", true, "aaa"},
-//	subTest{"aabaaabaaabaaaba", "b.*b", true, "baaabaaabaaab"},
-//	subTest{"aabaaabaaabaaaba", "b.-b", true, "baaab"},
+	subTest{"aaa", "^.-$", true, "aaa"},
+	subTest{"aabaaabaaabaaaba", "b.*b", true, "baaabaaabaaab"},
+	subTest{"aabaaabaaabaaaba", "b.-b", true, "baaab"},
+	subTest{"alo xo", ".o$", true, "xo"},
+	subTest{" \n isto é assim", "%S%S*", true, "isto"},
+	subTest{" \n isto é assim", "%S*$", true, "assim"},
+	subTest{" \n isto é assim", "[a-z]*$", true, "assim"},
+	subTest{"im caracter ? extra", "[^%sa-z]", true, "?"},
+	subTest{"", "a?", true, ""},
+
+	// These tests don't work 100% correctly if you use Unicode á instead
+	// of the ASCII value \225. In particular the third test fails
+	subTest{"\225", "\225?", true, "\225"},
+	subTest{"\225bl", "\225?b?l?", true, "\225bl"},
+	subTest{"  \225bl", "\225?b?l?", true, ""},
+
+	subTest{"aa", "^aa?a?a", true, "aa"},
+	subTest{"]]]\225b", "[^]]", true, "\225"},
+	subTest{"0alo alo", "%x*", true, "0a"},
+	subTest{"alo alo", "%C+", true, "alo alo"},
 }
 
 func TestSubtring(t *testing.T) {
 	enableDebug = false
+
 	for _, test := range subTests {
 
 		debug(fmt.Sprintf("=== %s ===", test))
