@@ -39,9 +39,7 @@ type matchState struct {
 
 func check_capture(ms *matchState, l int) int {
 	debug("check_capture")
-	// TODO: Why the hell is this being done?
-	var one byte = '1'
-	l = l - int(one)
+	l = l - int('1')		// change capture index to offset in capture array
 	if l < 0 || l >= ms.level || ms.capture[l].len == CAP_UNFINISHED {
 		panic("invalid capture index")
 	}
@@ -205,10 +203,10 @@ func max_expand(ms *matchState, sp, pp, epp *sptr) *sptr {
 		i++
 	}
 
-	debug(fmt.Sprintf("i: %d\n", i))
-
 	// keeps trying to match with the maximum repititions
 	for i >= 0 {
+
+		debug(fmt.Sprintf("Trying to match %d repetitions", i))
 		res := match(ms, s.cloneAt(i), ep.cloneAt(1))
 		if res != nil {
 			return res
@@ -269,21 +267,22 @@ func end_capture(ms *matchState, sp, pp *sptr) *sptr {
 	return res
 }
 
-// TODO: Is this function correct? Had to do a bunch of translation
 func match_capture(ms *matchState, sp *sptr, l int) *sptr {
 	debug("match_capture")
 	s := sp.clone()
-	var length int
-	l = check_capture(ms, l)
-	length = ms.capture[l].len
-	capstr := ms.capture[l].init.str[ms.capture[l].init.index:][1:length]
-	sstr := s.str[1:length]
 
-	if ms.src_end.index - s.index >= length && bytes.Compare(capstr, sstr) == 0 {
-		s.preInc(length)
-		return s
+	l = check_capture(ms, l)
+	lenc := ms.capture[l].len
+	capstr := ms.capture[l].init.getStringLen(lenc)
+	sstr := s.getStringLen(lenc)
+
+	if ms.src_end.index - s.index >= lenc && bytes.Compare(capstr, sstr) == 0 {
+		return s.cloneAt(lenc)
+	} else {
+		return nil
 	}
-	return nil
+
+	panic("never reached")
 }
 
 func match(ms *matchState, sp, pp *sptr) *sptr {

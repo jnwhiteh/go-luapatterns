@@ -91,6 +91,10 @@ var subTests = []subTest{
 	subTest{"]]]\225b", "[^]]", true, "\225"},
 	subTest{"0alo alo", "%x*", true, "0a"},
 	subTest{"alo alo", "%C+", true, "alo alo"},
+
+	// These are grouped seperately in the original tests
+	subTest{"alo alx 123 b\x00o b\x00o", "(..*) %1", true, "b\x00o b\x00o"},
+	subTest{"axz123= 4= 4 34", "(.+)=(.*)=%2 %1", true, "3= 4= 4 3"},
 }
 
 func TestSubtring(t *testing.T) {
@@ -99,7 +103,7 @@ func TestSubtring(t *testing.T) {
 	for _, test := range subTests {
 
 		debug(fmt.Sprintf("=== %s ===", test))
-		succ, start, end, caps := FindString(test.str, test.pat, 0, false)
+		succ, start, end, _ := FindString(test.str, test.pat, 0, false)
 		if succ != test.succ {
 			t.Errorf("find('%s', '%s') returned %t, expected %t", test.str, test.pat, succ, test.succ)
 		}
@@ -108,9 +112,7 @@ func TestSubtring(t *testing.T) {
 			if substr != test.cap {
 				t.Errorf("find('%s', '%s') => substr '%s' does not match expected '%s'", test.str, test.pat, substr, test.cap)
 			}
-			if len(caps) != 1 || substr != caps[0] {
-				t.Errorf("find('%s', '%s') => substr '%s' does not match capture '%s'", test.str, test.pat, substr, caps[0])
-			}
 		}
 	}
 }
+
