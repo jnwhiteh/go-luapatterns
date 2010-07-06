@@ -9,6 +9,7 @@ a string pointer type. I have still found the speed to be rather acceptable for
 most pattern matching needs.
 
 Currently the following function equivalents are implemented:
+
   * string.match as Match/MatchBytes
   * string.find as Find/FindBytes
   * string.gsub as Replace/ReplaceBytes
