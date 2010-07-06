@@ -566,3 +566,77 @@ func FindBytes(s, p []byte, plain bool) (bool, int, int, [][]byte) {
 	// Do a normal match with captures
 	return find_and_capture(s, p)
 }
+
+func add_s(ms *matchState, b *bytes.Buffer, s, e *sptr, news []byte) {
+	l := len(news)
+	for i := 0; i < l; i++ {
+		if news[i] != L_ESC {
+			b.WriteByte(news[i])
+		} else {
+			i++						// skip ESC (%)
+			if (!isdigit(news[i])) {
+				b.WriteByte(news[i])
+			} else if news[i] == '0' {
+				b.Write(s.getStringLen(e.index - s.index))
+			} else {
+				cidx := int(news[i] - '1')
+				b.Write(get_onecapture(ms, cidx, s, e))
+			}
+		}
+	}
+}
+
+// Replaces up-to n instances of patt with repl in the source string. In the
+// string repl, the charachter % works as an escape cahracter: any sequence of
+// the form %n, with n between 1 and 9, stands for the value of the n-th
+// captured substring due to the match with patt. The sequence %0 stands for
+// the entire match. The sequence %% stands for a single % in the resulting
+// string. A value of -1 for n will replace all instances of patt with repl.
+func Replace(src, patt, repl string, max int) (string, int) {
+	res, n := ReplaceBytes([]byte(src), []byte(patt), []byte(repl), max)
+	return string(res), n
+}
+
+// Same as the Replace function, however operates directly on byte arrays
+// rather than strings. This package operates natively in bytes, so this
+// function is called by Replace to perform it's work. 
+func ReplaceBytes(src, patt, repl []byte, max int) ([]byte, int) {
+	srcl := len(src)
+	pattp := &sptr{patt, 0}
+	srcp := &sptr{src, 0}
+
+	var anchor bool = false
+
+	if pattp.getChar() == '^' {
+		anchor = true
+		pattp.postInc(1)
+	}
+
+	var n int = 0
+	var b bytes.Buffer
+	ms := new(matchState)
+	ms.src_init = srcp
+	ms.src_end = srcp.cloneAt(srcl)
+	for n < max || max == -1 {
+		ms.level = 0
+		e := match(ms, srcp, pattp)
+		if e != nil {
+			n++
+			add_s(ms, &b, srcp, e, repl)			// Use add_s directly here
+		}
+		if e != nil && e.index > srcp.index {	// Non empty match
+			srcp.index = e.index				// skip it
+		} else if srcp.index < ms.src_end.index {
+			b.WriteByte(srcp.getChar())
+			srcp.postInc(1)
+		} else {
+			break
+		}
+
+		if anchor {
+			break
+		}
+	}
+	b.Write(srcp.getStringLen(ms.src_end.index - srcp.index))
+	return b.Bytes(), n
+}

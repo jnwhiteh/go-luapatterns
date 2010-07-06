@@ -9,8 +9,9 @@ a string pointer type. I have still found the speed to be rather acceptable for
 most pattern matching needs.
 
 Currently the following function equivalents are implemented:
-  * string.match
-  * string.find
+  * string.match as Match/MatchBytes
+  * string.find as Find/FindBytes
+  * string.gsub as Replace/ReplaceBytes
 
 ## Installing
 
@@ -53,11 +54,14 @@ Section 5.4.1][3].
     equivalent Lua program due to differences in array indexing (start will be
     -1) and slices. In order to get the substring of a pattern match, you can
     take `str[startIndex:endIndex]`.
+  * The `Replace` function is the string-only version of gsub. There is
+    currently no function/table lookup equivalent.
 
 ## Known Issues
 
   * Position captures are not currently implemented, as I am unsure how to
     return those values to the caller.
+  * The frontier pattern %f is not working properly
 
 ## Resources
   * [Lua 5.1 Reference Manual][2]
