@@ -11,6 +11,7 @@ most pattern matching needs.
 Currently the following function equivalents are implemented:
 
   * string.match as Match/MatchBytes
+  * string.gmatch as Gmatch/GmatchBytes
   * string.find as Find/FindBytes
   * string.gsub as Replace/ReplaceBytes
 
@@ -57,6 +58,8 @@ Section 5.4.1][3].
     take `str[startIndex:endIndex]`.
   * The `Replace` function is the string-only version of gsub. There is
     currently no function/table lookup equivalent.
+  * The `Gmatch` function is not a translation of the Lua version, it is a
+    simple naive implementation based on index tracking and `Find`.
 
 ## Known Issues
 
