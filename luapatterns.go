@@ -526,6 +526,50 @@ func MatchBytes(s, p []byte) (bool, [][]byte) {
 	return succ, caps
 }
 
+// Returns a channel that can be used to iterate over all the matches of
+// pattern p in string s. The single value sent down this channel is an
+// array of the captures from the match.
+func Gmatch(s, p string) (chan []string) {
+	out := make(chan []string)
+	start := 0
+	go func() {
+		for {
+			succ, _, e, caps := Find(s[start:], p, false)
+			if !succ {
+				close(out)
+				return
+			} else {
+				out <- caps
+				start = e + start
+			}
+		}
+	}()
+
+	return out
+}
+
+// Same as the Gmatch function, however operates directly on byte arrays rather
+// than strings. This package operates natively in bytes, so this function is
+// called by Gmatch to perform it's work. 
+func GmatchBytes(s, p []byte) (chan [][]byte) {
+	out := make(chan [][]byte)
+	start := 0
+	go func() {
+		for {
+			succ, _, e, caps := FindBytes(s[start:], p, false)
+			if succ {
+				out <- caps
+				start = e
+			} else {
+				close(out)
+				return
+			}
+		}
+	}()
+
+	return out
+}
+
 // Looks for the first match of pattern p in the string s. If it finds a match,
 // then find returns the indices of s where this occurrence starts and ends;
 // otherwise, it returns nil. If the pattern has captures, they are returned in
