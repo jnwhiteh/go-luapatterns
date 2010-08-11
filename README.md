@@ -21,6 +21,13 @@ You can install the package using [goinstall][4]
 
     goinstall github.com/jnwhiteh/go-luapatterns
 
+## Updating
+
+If you would like to update to the latest version of luapatterns, simply use
+the goinstall flag to accomplish this:
+
+    goinstall -u=true github.com/jnwhiteh/go-luapatterns
+
 ## Using
 
 Once you have installed the package using goinstall, you can use the package in
