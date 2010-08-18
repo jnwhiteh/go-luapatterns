@@ -56,7 +56,7 @@ var subTests = []subTest{
 	// These are grouped seperately in the original tests
 	// TODO: re-enable this test
 	subTest{"alo alx 123 b\x00o b\x00o", "(..*) %1", true, "b\x00o b\x00o"},
-	//subTest{"axz123= 4= 4 34", "(.+)=(.*)=%2 %1", true, "3= 4= 4 3"},
+	subTest{"axz123= 4= 4 34", "(.+)=(.*)=%2 %1", true, "3= 4= 4 3"},
 }
 
 func TestSubtring(t *testing.T) {
