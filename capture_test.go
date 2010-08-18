@@ -35,13 +35,16 @@ var MatchTests = []MatchTest{
 }
 
 func TestMatch(t *testing.T) {
+	enableDebug = false
 	for _, test := range MatchTests {
 		debug(fmt.Sprintf("==== %s ====", test))
 		succ, caps := Match(test.str, test.pat)
 		if succ != test.succ {
 			t.Errorf("match('%s', '%s') returned %t instead of expected %t", test.str, test.pat, succ, test.succ)
+			return
 		} else if !reflect.DeepEqual(caps, test.caps) {
 			t.Errorf("Captures do not match: got %s expected %s", caps, test.caps)
+			return
 		}
 	}
 }

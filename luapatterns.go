@@ -44,7 +44,7 @@ func debug(str string) {
 // make most of the implementation straightforward.
 
 const (
-	LUA_MAXCAPTURES = 1
+	LUA_MAXCAPTURES = 32
 	CAP_UNFINISHED  = -1
 	SPECIALS = "^$*+?.([%-"
 )
@@ -61,6 +61,7 @@ type matchState struct {
 }
 
 func (ms matchState) String() string {
+	return "<ms>"
 	result := fmt.Sprintf("matchState{'%s', %d, ", ms.src, ms.level)
 	if len(ms.capture) == 0 {
 		result = result + "{}}"
@@ -86,7 +87,7 @@ func tolower(c byte) byte {
 // simply be a non-special character itself.
 
 func match_class(c byte, cl byte) (res bool) {
-	debug(fmt.Sprintf("match_class(%q, %q)", c, cl))
+	//debug(fmt.Sprintf("match_class(%q, %q)", c, cl))
 
 	cllower := tolower(cl)
 	switch cllower {
@@ -125,7 +126,7 @@ func match_class(c byte, cl byte) (res bool) {
 // specified in the pattern.
 
 func matchbracketclass(c byte, p []byte, ec []byte) bool {
-	debug(fmt.Sprintf("matchbracketclass('%c', %q, %q)", c, p, ec))
+	//debug(fmt.Sprintf("matchbracketclass('%c', %q, %q)", c, p, ec))
 	var sig bool = true
 	if p[1] == '^' {
 		sig = false
@@ -155,7 +156,7 @@ func matchbracketclass(c byte, p []byte, ec []byte) bool {
 // of the argument ep.
 
 func singlematch(c byte, p []byte, ep []byte) bool {
-	debug(fmt.Sprintf("singlematch('%c', %q, %q)", c, p, ep))
+	//debug(fmt.Sprintf("singlematch('%c', %q, %q)", c, p, ep))
 	switch p[0] {
 	case '.':
 		return true
@@ -178,7 +179,7 @@ func singlematch(c byte, p []byte, ep []byte) bool {
 // specified, where b is the start and e is the end of the balance pattern.
 
 func matchbalance(ms *matchState, s, p []byte) []byte {
-	debug(fmt.Sprintf("matchbalance(%q, %q, %q)", ms, s, p))
+	//debug(fmt.Sprintf("matchbalance(%q, %q, %q)", ms, s, p))
 	if len(p) <= 1 {
 		// error: unbalanced pattern
 		return nil
@@ -216,15 +217,16 @@ func matchbalance(ms *matchState, s, p []byte) []byte {
 // pattern (equates to the '+' or '*' operator)
 
 func max_expand(ms *matchState, s, p, ep []byte) []byte {
-	debug(fmt.Sprintf("max_expand(%q, %q, %q, %q)", ms, s, p, ep))
+	//debug(fmt.Sprintf("max_expand(%q, %q, %q, %q)", ms, s, p, ep))
 
 	// Run through the string to find the maximum number of matches that are
 	// possible for the pattern item.
 
 	var i int = 0 // count maximum expand for item
 	for i = 0; i < len(s) && singlematch(s[i], p, ep); i++ {
-		debug(fmt.Sprintf("Can match up to %d times", i))
 	}
+
+	//debug(fmt.Sprintf("Can match up to %d times", i))
 
 	// Try to match with maximum reptitions
 	for i >= 0 {
@@ -243,7 +245,7 @@ func max_expand(ms *matchState, s, p, ep []byte) []byte {
 // pattern (equates to the '-' operator)
 
 func min_expand(ms *matchState, s, p, ep []byte) []byte {
-	debug(fmt.Sprintf("min_expand(%q, %q, %q, %q)", ms, s, p, ep))
+	//debug(fmt.Sprintf("min_expand(%q, %q, %q, %q)", ms, s, p, ep))
 	for {
 		res := match(ms, s, ep[1:])
 		if res != nil {
@@ -263,7 +265,7 @@ func min_expand(ms *matchState, s, p, ep []byte) []byte {
 // return -1 and handle error checking outside this routine.
 
 func check_capture(ms *matchState, l int) int {
-	debug(fmt.Sprintf("check_capture(%q, %q)", ms, l))
+	//debug(fmt.Sprintf("check_capture(%q, %q)", ms, l))
 	l = l - '1'
 	if l < 0 || l >= ms.level || ms.capture[l].len == CAP_UNFINISHED {
 		// error: invalid capture index
@@ -276,7 +278,7 @@ func check_capture(ms *matchState, l int) int {
 // no such capture level.
 
 func capture_to_close(ms *matchState) int {
-	debug(fmt.Sprintf("capture_to_close(%q)", ms))
+	//debug(fmt.Sprintf("capture_to_close(%q)", ms))
 	for level := ms.level - 1; level >= 0; level = level - 1 {
 		if ms.capture[level].len == CAP_UNFINISHED {
 			return level
@@ -288,7 +290,7 @@ func capture_to_close(ms *matchState) int {
 // Finds the end of a character class [] and return that part of the pattern
 
 func classend(ms *matchState, p []byte) []byte {
-	debug(fmt.Sprintf("classend(%q, %q)", ms, p))
+	//debug(fmt.Sprintf("classend(%q, %q)", ms, p))
 	var ch byte = p[0]
 	p = p[1:]
 
@@ -338,18 +340,21 @@ func classend(ms *matchState, p []byte) []byte {
 // undone, otherwise the match is returned.
 
 func start_capture(ms *matchState, s, p []byte, what int) []byte {
-	debug(fmt.Sprintf("start_capture(%q, %q, %q, %q)", ms, s, p, what))
+	//debug(fmt.Sprintf("start_capture(%q, %q, %q, %q)", ms, s, p, what))
 	var res []byte
 	var level int = ms.level
 
 	if level >= LUA_MAXCAPTURES {
 		// error: too many captures
+		//debug("**** too many captures, getting out of here!")
 		return nil
 	}
+	//debug(fmt.Sprintf("**** level: %d", level))
 	ms.capture[level].src = s
 	ms.capture[level].len = what
 	ms.level = level + 1
 	if res = match(ms, s, p); res == nil {
+		//debug("undoing capture due to failed match")
 		// match failed, so undo capture
 		ms.level--
 	}
@@ -359,16 +364,16 @@ func start_capture(ms *matchState, s, p []byte, what int) []byte {
 // Ends a capture
 
 func end_capture(ms *matchState, s, p []byte) []byte {
-	debug(fmt.Sprintf("end_capture(%q, %q, %q)", ms, s, p))
+	//debug(fmt.Sprintf("end_capture(%q, %q, %q)", ms, s, p))
 	var l int = capture_to_close(ms)
 	if l == -1 {
 		return nil
 	}
 
-	debug(fmt.Sprintf("***\n\ns: %q, capsrc: %q\n\n", s, ms.capture[l].src))
+	//debug(fmt.Sprintf("***\n\ns: %q, capsrc: %q\n\n", s, ms.capture[l].src))
 	var res []byte
 	// close the capture
-	debug(fmt.Sprintf("l: %d, capture: %q", l, ms.capture[l]))
+	//debug(fmt.Sprintf("l: %d, capture: %q", l, ms.capture[l]))
 	ms.capture[l].len = len(ms.capture[l].src) - len(s)
 	if res = match(ms, s, p); res == nil {
 		// undo the capture, remainder match failed
@@ -382,7 +387,7 @@ func end_capture(ms *matchState, s, p []byte) []byte {
 // remainder of the source string that was not captured.
 
 func match_capture(ms *matchState, s []byte, l int) []byte {
-	debug(fmt.Sprintf("match_capture(%q, %q, %q)", ms, s, l))
+	//debug(fmt.Sprintf("match_capture(%q, %q, %q)", ms, s, l))
 	var clen int
 	l = check_capture(ms, l)
 	if l == -1 {
@@ -390,7 +395,7 @@ func match_capture(ms *matchState, s []byte, l int) []byte {
 	}
 
 	clen = ms.capture[l].len
-	debug(fmt.Sprintf("clen: %d", clen))
+	//debug(fmt.Sprintf("clen: %d", clen))
 
 	// ensure there is enough space in the source string to accommodate the
 	// match
@@ -406,8 +411,9 @@ func match_capture(ms *matchState, s []byte, l int) []byte {
 // changing the match state (and source/pattern strings) as necessary.
 
 func match(ms *matchState, s, p []byte) []byte {
-	debug(fmt.Sprintf("match(%q, %q, %q)", ms, s, p))
+	//debug(fmt.Sprintf("match(%q, %q, %q)", ms, s, p))
 init:
+	//debug(fmt.Sprintf("match[init](%q, %q, %q)", ms, s, p))
 
 	if len(p) == 0 {
 		return s
@@ -468,9 +474,11 @@ init:
 		}
 	default:
 	dflt:
+		//debug(fmt.Sprintf("match[dflt](%q, %q, %q)", ms, s, p))
 		{ // it is a pattern item
 			ep := classend(ms, p) // points to what is next
 			m := len(s) > 0 && singlematch(s[0], p, ep)
+			//debug(fmt.Sprintf("m: %t", m))
 
 			// Handle the case where ep has run out so we can't index it
 			if len(ep) == 0 {
@@ -531,7 +539,7 @@ init:
 }
 
 func get_onecapture(ms *matchState, i int, s, e []byte) []byte {
-	debug(fmt.Sprintf("get_onecapture(%q, %d, %q, %q)", ms, i, s, e))
+	//debug(fmt.Sprintf("get_onecapture(%q, %d, %q, %q)", ms, i, s, e))
 	if i >= ms.level {
 		if i == 0 {
 			// return whole match
@@ -732,7 +740,7 @@ func FindBytes(s, p []byte, plain bool) (bool, int, int, [][]byte) {
 		res := match(ms, s[init:], p)
 
 		if res != nil {
-			debug(fmt.Sprintf("match res: %q", res))
+			//debug(fmt.Sprintf("match res: %q", res))
 			// Determine the start and end indices of the match
 			var start int = init
 			var end int = len(s) - len(res)
@@ -780,6 +788,7 @@ func Replace(src, patt, repl string, max int) (string, int) {
 // function is called by Replace to perform it's work. 
 
 func ReplaceBytes(src, patt, repl []byte, max int) ([]byte, int) {
+	//debug(fmt.Sprintf("ReplaceBytes(%q, %q, %q, %d)", src, patt, repl, max))
 	var anchor bool = false
 
 	if patt[0] == '^' {
@@ -791,20 +800,30 @@ func ReplaceBytes(src, patt, repl []byte, max int) ([]byte, int) {
 	var b bytes.Buffer
 	ms := new(matchState)
 	ms.src = src
+	ms.capture = make([]capture, LUA_MAXCAPTURES, LUA_MAXCAPTURES)
 
 	for n < max || max == -1 {
+		//debug(fmt.Sprintf("loop: n: %d, src = %q, patt = %q, b: %q", n, src, patt, b.Bytes()))
 		ms.level = 0
 		e := match(ms, src, patt)
+		//debug(fmt.Sprintf("** e: %q", e))
 		if e != nil {
 			n++
+			//debug("Found a match, so replacing it")
+			//debug(fmt.Sprintf("e: %q, b: %q", e, b.Bytes()))
 			add_s(ms, &b, src, e, repl)			// Use add_s directly here
+			//debug(fmt.Sprintf("e: %q, b: %q", e, b.Bytes()))
 		}
-		if e != nil && len(src) - len(e) > 0 {	// Non empty match
-			src = e								// skip it
-		} else if len(src) > len(ms.src) {
+		//debug(fmt.Sprintf("src: %q, ms.src: %q", src, ms.src))
+		if e != nil && len(src) > 0 {		// Non empty match
+			//debug("foo")
+			src = e						// skip it
+		} else if len(src) > 0 {
+			//debug("bar")
 			b.WriteByte(src[0])
 			src = src[1:]
 		} else {
+			//debug("baz")
 			break
 		}
 
@@ -812,6 +831,7 @@ func ReplaceBytes(src, patt, repl []byte, max int) ([]byte, int) {
 			break
 		}
 	}
-	b.Write(src[0:len(src) - len(ms.src)])
+	b.Write(src[0:])
+	//debug(fmt.Sprintf("Replace complete: %q", b.Bytes()))
 	return b.Bytes(), n
 }

@@ -1,9 +1,9 @@
 package main
 
-import "github.com/jnwhiteh/go-luapatterns"
+import "luapatterns"
 import "strings"
 
 func main() {
-	teststr := strings.Repeat("a", 1e7) + "b"
+	teststr := strings.Repeat("a", 1e8) + "b"
 	_, _ = luapatterns.Match(teststr, ".-b")
 }
