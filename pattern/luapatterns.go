@@ -436,14 +436,13 @@ init:
 	case '%':
 		{
 			switch p[1] {
-			case 'b':
-				{ // balanced string
+			case 'b': { // balanced string
 					s = matchbalance(ms, s, p[2:])
 					if s == nil {
 						return nil
 					}
 					p = p[4:]
-				}
+			}
 			// TODO: Support the frontier pattern
 			default:
 				{
