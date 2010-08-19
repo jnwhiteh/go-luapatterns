@@ -36,7 +36,7 @@ the following manner:
         package main
     
         import "fmt"
-        import "github.com/jnwhiteh/go-luapatterns/pattern"
+        import pattern "github.com/jnwhiteh/go-luapatterns/pattern"
         
         func main() {
         	str := "aaaaab"
