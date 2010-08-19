@@ -27,6 +27,7 @@ var GmatchTests = []GmatchTest{
 }
 
 func TestGmatch(t *testing.T) {
+	enableDebug = false
 	for _, test := range GmatchTests {
 		debug(fmt.Sprintf("==== %s ====", test))
 
