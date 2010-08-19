@@ -7,8 +7,8 @@ import (
 )
 
 type GmatchTest struct {
-	str string
-	pat string
+	str  string
+	pat  string
 	vals [][]string
 }
 

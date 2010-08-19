@@ -4,7 +4,7 @@ import "testing"
 import "strings"
 
 var limit int = 1e6
-var longBytes = make([]byte, limit + 1, limit + 1)
+var longBytes = make([]byte, limit+1, limit+1)
 var longString = strings.Repeat("a", limit) + "b"
 
 func BenchmarkLongBytes(b *testing.B) {

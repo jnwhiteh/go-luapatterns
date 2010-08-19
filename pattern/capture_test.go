@@ -10,8 +10,8 @@ import (
 var foo = fmt.Sprintf("blah")
 
 type MatchTest struct {
-	str string
-	pat string
+	str  string
+	pat  string
 	succ bool
 	caps []string
 }

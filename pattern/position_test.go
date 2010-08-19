@@ -5,12 +5,12 @@ import (
 )
 
 type posTest struct {
-	str string
-	pat string
-	init int
-	succ bool
+	str   string
+	pat   string
+	init  int
+	succ  bool
 	start int
-	end int
+	end   int
 }
 
 // These tests have been taken from the Lua test suite, but have been altered
@@ -18,8 +18,8 @@ type posTest struct {
 // is always an empty string. As a result the start and end returns must be
 // adjusted.
 var posTests = []posTest{
-	posTest{"", "", 0, true, 0, 0},									// special case
-	posTest{"alo", "", 0, true, 0, 0},								// special case
+	posTest{"", "", 0, true, 0, 0},    // special case
+	posTest{"alo", "", 0, true, 0, 0}, // special case
 	posTest{"a\x00o a\x00o a\x00o", "a", 0, true, 0, 1},
 	posTest{"a\x00o a\x00o a\x00o", "a\x00o", 2, true, 4, 7},
 	posTest{"a\x00o a\x00o a\x00o", "a\x00o", 8, true, 8, 11},

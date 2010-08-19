@@ -1,7 +1,7 @@
 package luapatterns
 
 type sptr struct {
-	str []byte
+	str   []byte
 	index int
 }
 
@@ -46,7 +46,7 @@ func (s *sptr) getString() []byte {
 }
 
 func (s *sptr) getStringAt(index int) []byte {
-	return s.str[s.index + index:]
+	return s.str[s.index+index:]
 }
 
 func (s *sptr) getStringLen(length int) []byte {

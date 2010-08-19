@@ -6,9 +6,9 @@ import (
 )
 
 type ClassTest struct {
-	name string
-	fn func(byte) bool
-	str string
+	name   string
+	fn     func(byte) bool
+	str    string
 	result bool
 }
 
@@ -17,7 +17,7 @@ var ascii = "\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b\x0c\x0d\x0e\x0f\x1
 func invert(s string) string {
 	res := ""
 	for i := 0; i < len(ascii); i++ {
-		char := ascii[i:i+1]
+		char := ascii[i : i+1]
 		if strings.IndexAny(char, s) == -1 {
 			res = res + char
 		}
@@ -27,7 +27,7 @@ func invert(s string) string {
 
 var cntrl = ascii[0:32] + string(ascii[127])
 
-var ClassTests = []ClassTest {
+var ClassTests = []ClassTest{
 	ClassTest{"isalpha", isalpha, ascii[65:91], true},
 	ClassTest{"isalpha", isalpha, ascii[97:123], true},
 	ClassTest{"isalpha", isalpha, invert(ascii[65:91] + ascii[97:123]), false},

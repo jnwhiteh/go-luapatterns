@@ -6,10 +6,10 @@ import (
 )
 
 type subTest struct {
-	str string
-	pat string
+	str  string
+	pat  string
 	succ bool
-	cap string
+	cap  string
 }
 
 var subTests = []subTest{
@@ -28,7 +28,7 @@ var subTests = []subTest{
 	subTest{"a$a", ".$.", true, "a$a"},
 	subTest{"a$a", "$$", false, ""},
 	subTest{"a$b", "a$", false, ""},
-	subTest{"a$a", "$", true ,""},
+	subTest{"a$a", "$", true, ""},
 	subTest{"", "b*", true, ""},
 	subTest{"aaa", "bb*", false, ""},
 	subTest{"aaab", "a-", true, ""},

@@ -21,7 +21,7 @@ func isdigit(b byte) bool {
 }
 
 func ispunct(b byte) bool {
-	return	(b >= '{' && b <= '~') || (b == '`') || (b >= '[' && b <= '_') || (b == '@') || (b >= ':' && b <= '?') || (b >= '(' && b <= '/') || (b >= '!' && b <= '\'')
+	return (b >= '{' && b <= '~') || (b == '`') || (b >= '[' && b <= '_') || (b == '@') || (b >= ':' && b <= '?') || (b >= '(' && b <= '/') || (b >= '!' && b <= '\'')
 }
 
 func isspace(b byte) bool {

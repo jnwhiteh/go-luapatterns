@@ -46,7 +46,7 @@ func debug(str string) {
 const (
 	LUA_MAXCAPTURES = 32
 	CAP_UNFINISHED  = -1
-	SPECIALS = "^$*+?.([%-"
+	SPECIALS        = "^$*+?.([%-"
 )
 
 type capture struct {
@@ -138,7 +138,7 @@ func matchbracketclass(c byte, p []byte, ec []byte) bool {
 			if match_class(c, p[0]) {
 				return sig
 			}
-		} else if p[1] == '-' && (len(p) - 2 > len(ec)) {
+		} else if p[1] == '-' && (len(p)-2 > len(ec)) {
 			if p[0] <= c && c <= p[2] {
 				return sig
 			}
@@ -436,13 +436,14 @@ init:
 	case '%':
 		{
 			switch p[1] {
-			case 'b': { // balanced string
+			case 'b':
+				{ // balanced string
 					s = matchbalance(ms, s, p[2:])
 					if s == nil {
 						return nil
 					}
 					p = p[4:]
-			}
+				}
 			// TODO: Support the frontier pattern
 			default:
 				{
@@ -542,7 +543,7 @@ func get_onecapture(ms *matchState, i int, s, e []byte) []byte {
 	if i >= ms.level {
 		if i == 0 {
 			// return whole match
-			return s[0:len(s) - len(e)]
+			return s[0 : len(s)-len(e)]
 		} else {
 			// error: invalid capture index
 			return nil
@@ -573,10 +574,10 @@ func lmemfind(s1 []byte, s2 []byte) int {
 		end := init + l2
 		for end <= l1 && init != -1 {
 			//fmt.Printf("l1: %d, l2: %d, init: %d, end: %d, slice: %s\n", l1, l2, init, end, s1[init:end])
-			init++		// 1st char is already checked by IndexBytes
-			if bytes.Equal(s1[init - 1:end], s2) {
+			init++ // 1st char is already checked by IndexBytes
+			if bytes.Equal(s1[init-1:end], s2) {
 				return init - 1
-			} else {	// find the next 'init' and try again
+			} else { // find the next 'init' and try again
 				next := bytes.IndexByte(s1[init:], s2[0])
 				if next == -1 {
 					return -1
@@ -597,11 +598,11 @@ func add_s(ms *matchState, b *bytes.Buffer, s, e []byte, news []byte) {
 		if news[i] != '%' {
 			b.WriteByte(news[i])
 		} else {
-			i++								// skip ESC (%)
-			if (!isdigit(news[i])) {
+			i++ // skip ESC (%)
+			if !isdigit(news[i]) {
 				b.WriteByte(news[i])
 			} else if news[i] == '0' {
-				b.Write(s[0:len(s) - len(e)])
+				b.Write(s[0 : len(s)-len(e)])
 			} else {
 				cidx := int(news[i] - '1')
 				b.Write(get_onecapture(ms, cidx, s, e))
@@ -629,7 +630,7 @@ func Match(s, p string) (bool, []string) {
 
 // Same as the Match function, however operates directly on byte arrays rather
 // than strings. This package operates natively in bytes, so this function is
-// called by Match to perform it's work. 
+// called by Match to perform it's work.
 
 func MatchBytes(s, p []byte) (bool, [][]byte) {
 	succ, _, _, caps := FindBytes(s, p, false)
@@ -640,7 +641,7 @@ func MatchBytes(s, p []byte) (bool, [][]byte) {
 // pattern p in string s. The single value sent down this channel is an
 // array of the captures from the match.
 
-func Gmatch(s, p string) (chan []string) {
+func Gmatch(s, p string) chan []string {
 	out := make(chan []string)
 	start := 0
 	go func() {
@@ -663,7 +664,7 @@ func Gmatch(s, p string) (chan []string) {
 // than strings. This package operates natively in bytes, so this function is
 // called by Gmatch to perform it's work.
 
-func GmatchBytes(s, p []byte) (chan [][]byte) {
+func GmatchBytes(s, p []byte) chan [][]byte {
 	out := make(chan [][]byte)
 	start := 0
 	go func() {
@@ -691,7 +692,7 @@ func GmatchBytes(s, p []byte) (chan [][]byte) {
 //
 // Note that the indices returned from this function will NOT match the
 // versions returned by the equivalent Lua string and pattern due to the
-// differences in slice semantics and array indexing. 
+// differences in slice semantics and array indexing.
 //
 // You can rely on the fact that s[startIdx:endIdx] will be the entire portion
 // of the string that matched the pattern.
@@ -710,7 +711,7 @@ func Find(s, p string, plain bool) (bool, int, int, []string) {
 
 // Same as the Find function, however operates directly on byte arrays rather
 // than strings. This package operates natively in bytes, so this function is
-// called by Find to perform it's work. 
+// called by Find to perform it's work.
 
 func FindBytes(s, p []byte, plain bool) (bool, int, int, [][]byte) {
 	if plain || bytes.IndexAny(p, SPECIALS) == -1 {
@@ -760,7 +761,7 @@ func FindBytes(s, p []byte, plain bool) (bool, int, int, [][]byte) {
 			}
 
 			return true, start, end, captures[0:nlevels]
-		} else if len(s) - init == 0 || anchor {
+		} else if len(s)-init == 0 || anchor {
 			break
 		}
 
@@ -784,7 +785,7 @@ func Replace(src, patt, repl string, max int) (string, int) {
 
 // Same as the Replace function, however operates directly on byte arrays
 // rather than strings. This package operates natively in bytes, so this
-// function is called by Replace to perform it's work. 
+// function is called by Replace to perform it's work.
 
 func ReplaceBytes(src, patt, repl []byte, max int) ([]byte, int) {
 	//debug(fmt.Sprintf("ReplaceBytes(%q, %q, %q, %d)", src, patt, repl, max))
@@ -810,13 +811,13 @@ func ReplaceBytes(src, patt, repl []byte, max int) ([]byte, int) {
 			n++
 			//debug("Found a match, so replacing it")
 			//debug(fmt.Sprintf("e: %q, b: %q", e, b.Bytes()))
-			add_s(ms, &b, src, e, repl)			// Use add_s directly here
+			add_s(ms, &b, src, e, repl) // Use add_s directly here
 			//debug(fmt.Sprintf("e: %q, b: %q", e, b.Bytes()))
 		}
 		//debug(fmt.Sprintf("src: %q, ms.src: %q", src, ms.src))
-		if e != nil && len(src) > 0 {		// Non empty match
+		if e != nil && len(src) > 0 { // Non empty match
 			//debug("foo")
-			src = e						// skip it
+			src = e // skip it
 		} else if len(src) > 0 {
 			//debug("bar")
 			b.WriteByte(src[0])
