@@ -19,14 +19,14 @@ Currently the following function equivalents are implemented:
 
 You can install the package using [goinstall][4]
 
-    goinstall github.com/jnwhiteh/go-luapatterns
+    goinstall github.com/jnwhiteh/go-luapatterns/pattern
 
 ## Updating
 
 If you would like to update to the latest version of luapatterns, simply use
 the goinstall flag to accomplish this:
 
-    goinstall -u=true github.com/jnwhiteh/go-luapatterns
+    goinstall -u=true github.com/jnwhiteh/go-luapatterns/pattern
 
 ## Using
 
@@ -36,12 +36,12 @@ the following manner:
         package main
     
         import "fmt"
-        import "github.com/jnwhiteh/go-luapatterns"
+        import "github.com/jnwhiteh/go-luapatterns/pattern"
         
         func main() {
         	str := "aaaaab"
         	pat := "(.-)(b)"
-        	succ, caps := luapatterns.Match(str, pat)
+        	succ, caps := pattern.Match(str, pat)
         
         	fmt.Printf("Match('%s', '%s') => %t\n", str, pat, succ)
         	for idx, capture := range caps {
