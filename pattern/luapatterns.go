@@ -419,6 +419,9 @@ init:
 		return s
 	}
 
+	var ep []byte
+	var m bool
+
 	switch p[0] {
 	case '(':
 		{ // start capture
@@ -473,67 +476,70 @@ init:
 			}
 		}
 	default:
-	dflt:
-		//debug(fmt.Sprintf("match[dflt](%q, %q, %q)", ms, s, p))
-		{ // it is a pattern item
-			ep := classend(ms, p) // points to what is next
-			m := len(s) > 0 && singlematch(s[0], p, ep)
-			//debug(fmt.Sprintf("m: %t", m))
+		goto dflt
+	}
 
-			// Handle the case where ep has run out so we can't index it
-			if len(ep) == 0 {
-				if !m {
-					return nil
-				} else {
-					s = s[1:]
-					p = ep
-					goto init
-				}
-			}
+	goto skipdflt
 
-			switch ep[0] {
-			case '?':
-				{
-					// If s has run out, the optional match passes
-					if len(s) == 0 {
-						return []byte{}
-					}
+dflt: // it is a pattern item
+	ep = classend(ms, p) // points to what is next
+	m = len(s) > 0 && singlematch(s[0], p, ep)
+	//debug(fmt.Sprintf("m: %t", m))
 
-					var res []byte = match(ms, s[1:], ep[1:])
-					if m && res != nil {
-						return res
-					}
-					p = ep[1:]
-					goto init
-				}
-			case '*':
-				{
-					return max_expand(ms, s, p, ep)
-				}
-			case '+':
-				{
-					if m {
-						return max_expand(ms, s[1:], p, ep)
-					} else {
-						return nil
-					}
-				}
-			case '-':
-				{
-					return min_expand(ms, s, p, ep)
-				}
-			default:
-				{
-					if !m {
-						return nil
-					}
-					s = s[1:]
-					p = ep
-					goto init
-				}
-			}
+	// Handle the case where ep has run out so we can't index it
+	if len(ep) == 0 {
+		if !m {
+			return nil
+		} else {
+			s = s[1:]
+			p = ep
+			goto init
 		}
 	}
+
+	switch ep[0] {
+	case '?':
+		{
+			// If s has run out, the optional match passes
+			if len(s) == 0 {
+				return []byte{}
+			}
+
+			var res []byte = match(ms, s[1:], ep[1:])
+			if m && res != nil {
+				return res
+			}
+			p = ep[1:]
+			goto init
+		}
+	case '*':
+		{
+			return max_expand(ms, s, p, ep)
+		}
+	case '+':
+		{
+			if m {
+				return max_expand(ms, s[1:], p, ep)
+			} else {
+				return nil
+			}
+		}
+	case '-':
+		{
+			return min_expand(ms, s, p, ep)
+		}
+	default:
+		{
+			if !m {
+				return nil
+			}
+			s = s[1:]
+			p = ep
+			goto init
+		}
+	}
+
+skipdflt:
 
 	return nil
 }
