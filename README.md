@@ -17,16 +17,16 @@ Currently the following function equivalents are implemented:
 
 ## Installing
 
-You can install the package using [goinstall][4]
+You can install the package using [go install][4]
 
-    goinstall github.com/jnwhiteh/go-luapatterns/pattern
+    go install github.com/jnwhiteh/go-luapatterns/pattern
 
 ## Updating
 
 If you would like to update to the latest version of luapatterns, simply use
 the goinstall flag to accomplish this:
 
-    goinstall -u=true github.com/jnwhiteh/go-luapatterns/pattern
+    go install github.com/jnwhiteh/go-luapatterns/luapatterns
 
 ## Using
 
@@ -36,7 +36,7 @@ the following manner:
         package main
     
         import "fmt"
-        import pattern "github.com/jnwhiteh/go-luapatterns/pattern"
+        import pattern "github.com/jnwhiteh/go-luapatterns/luapatterns"
         
         func main() {
         	str := "aaaaab"
